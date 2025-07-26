@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/AntonioSabino/fc-ms-wallet/internal/entity"
+	"github.com/AntonioSabino/fc-ms-wallet/internal/event"
+	"github.com/AntonioSabino/fc-ms-wallet/pkg/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -51,7 +53,10 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 	accountGateway.On("FindByID", "account-to-id").Return(accountTo, nil)
 	transactionGateway.On("Save", mock.Anything).Return(nil)
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	input := CreateTransactionInputDTO{
 		AccountIDFrom: "account-from-id",
@@ -81,7 +86,10 @@ func TestCreateTransactionUseCase_ExecuteWithAccountFromNotFound(t *testing.T) {
 
 	accountGateway.On("FindByID", "account-from-id").Return(nil, errors.New("account not found"))
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	input := CreateTransactionInputDTO{
 		AccountIDFrom: "account-from-id",
@@ -111,7 +119,10 @@ func TestCreateTransactionUseCase_ExecuteWithAccountToNotFound(t *testing.T) {
 	accountGateway.On("FindByID", "account-from-id").Return(accountFrom, nil)
 	accountGateway.On("FindByID", "account-to-id").Return(nil, errors.New("account not found"))
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	input := CreateTransactionInputDTO{
 		AccountIDFrom: "account-from-id",
@@ -145,7 +156,10 @@ func TestCreateTransactionUseCase_ExecuteWithInsufficientFunds(t *testing.T) {
 	accountGateway.On("FindByID", "account-from-id").Return(accountFrom, nil)
 	accountGateway.On("FindByID", "account-to-id").Return(accountTo, nil)
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	input := CreateTransactionInputDTO{
 		AccountIDFrom: "account-from-id",
@@ -179,7 +193,10 @@ func TestCreateTransactionUseCase_ExecuteWithZeroAmount(t *testing.T) {
 	accountGateway.On("FindByID", "account-from-id").Return(accountFrom, nil)
 	accountGateway.On("FindByID", "account-to-id").Return(accountTo, nil)
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	input := CreateTransactionInputDTO{
 		AccountIDFrom: "account-from-id",
@@ -213,7 +230,10 @@ func TestCreateTransactionUseCase_ExecuteWithNegativeAmount(t *testing.T) {
 	accountGateway.On("FindByID", "account-from-id").Return(accountFrom, nil)
 	accountGateway.On("FindByID", "account-to-id").Return(accountTo, nil)
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	input := CreateTransactionInputDTO{
 		AccountIDFrom: "account-from-id",
@@ -248,7 +268,10 @@ func TestCreateTransactionUseCase_ExecuteWithTransactionGatewayError(t *testing.
 	accountGateway.On("FindByID", "account-to-id").Return(accountTo, nil)
 	transactionGateway.On("Save", mock.Anything).Return(errors.New("database error"))
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	input := CreateTransactionInputDTO{
 		AccountIDFrom: "account-from-id",
@@ -276,9 +299,14 @@ func TestNewCreateTransactionUseCase(t *testing.T) {
 	transactionGateway := &TransactionGatewayMock{}
 	accountGateway := &AccountGatewayMock{}
 
-	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway)
+	dispatcher := events.NewEventDispatcher()
+	event := event.NewTransactionCreated()
+
+	uc := NewCreateTransactionUseCase(transactionGateway, accountGateway, dispatcher, event)
 
 	assert.NotNil(t, uc)
-	assert.Equal(t, transactionGateway, uc.transactionGateway)
-	assert.Equal(t, accountGateway, uc.accountGateway)
+	assert.Equal(t, transactionGateway, uc.TransactionGateway)
+	assert.Equal(t, accountGateway, uc.AccountGateway)
+	assert.Equal(t, dispatcher, uc.EventDispatcher)
+	assert.Equal(t, event, uc.TransactionCreated)
 }

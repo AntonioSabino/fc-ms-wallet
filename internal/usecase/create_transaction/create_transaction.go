@@ -3,6 +3,7 @@ package createtransaction
 import (
 	"github.com/AntonioSabino/fc-ms-wallet/internal/entity"
 	"github.com/AntonioSabino/fc-ms-wallet/internal/gateway"
+	"github.com/AntonioSabino/fc-ms-wallet/pkg/events"
 )
 
 type CreateTransactionInputDTO struct {
@@ -16,27 +17,33 @@ type CreateTransactionOutputDTO struct {
 }
 
 type CreateTransactionUseCase struct {
-	transactionGateway gateway.TransactionGateway
-	accountGateway     gateway.AccountGateway
+	TransactionGateway gateway.TransactionGateway
+	AccountGateway     gateway.AccountGateway
+	EventDispatcher    events.EventDispatcherInterface
+	TransactionCreated events.EventInterface
 }
 
 func NewCreateTransactionUseCase(
 	transactionGateway gateway.TransactionGateway,
 	accountGateway gateway.AccountGateway,
+	eventDispatcher events.EventDispatcherInterface,
+	transactionCreated events.EventInterface,
 ) *CreateTransactionUseCase {
 	return &CreateTransactionUseCase{
-		transactionGateway: transactionGateway,
-		accountGateway:     accountGateway,
+		TransactionGateway: transactionGateway,
+		AccountGateway:     accountGateway,
+		EventDispatcher:    eventDispatcher,
+		TransactionCreated: transactionCreated,
 	}
 }
 
 func (uc *CreateTransactionUseCase) Execute(input CreateTransactionInputDTO) (*CreateTransactionOutputDTO, error) {
-	accountFrom, err := uc.accountGateway.FindByID(input.AccountIDFrom)
+	accountFrom, err := uc.AccountGateway.FindByID(input.AccountIDFrom)
 	if err != nil {
 		return nil, err
 	}
 
-	accountTo, err := uc.accountGateway.FindByID(input.AccountIDTo)
+	accountTo, err := uc.AccountGateway.FindByID(input.AccountIDTo)
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +57,20 @@ func (uc *CreateTransactionUseCase) Execute(input CreateTransactionInputDTO) (*C
 		return nil, err
 	}
 
-	err = uc.transactionGateway.Save(transaction)
+	err = uc.TransactionGateway.Save(transaction)
 	if err != nil {
 		return nil, err
 	}
 
-	return &CreateTransactionOutputDTO{
+	output := &CreateTransactionOutputDTO{
 		ID: transaction.ID,
-	}, nil
+	}
+
+	uc.TransactionCreated.SetPayload(output)
+	err = uc.EventDispatcher.Dispatch(uc.TransactionCreated)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }
